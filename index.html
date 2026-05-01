@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>All-in-One Alarm App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0f0f1a;color:white;font-family:Arial;min-height:100vh;}
+h1{text-align:center;padding:20px;color:#7c3aed;font-size:24px;}
+.tabs{display:flex;overflow-x:auto;background:#1a1a2e;padding:10px;gap:8px;}
+.tab{background:#2d2d44;border:none;color:white;padding:10px 15px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:14px;}
+.tab.active{background:#7c3aed;}
+.section{display:none;padding:20px;}
+.section.active{display:block;}
+.card{background:#1a1a2e;border-radius:15px;padding:20px;margin-bottom:15px;}
+.card h2{color:#7c3aed;margin-bottom:15px;}
+input[type=time],input[type=number],select{width:100%;padding:12px;background:#2d2d44;border:none;color:white;border-radius:10px;font-size:16px;margin-bottom:10px;}
+button{width:100%;padding:12px;background:#7c3aed;border:none;color:white;border-radius:10px;font-size:16px;cursor:pointer;margin-bottom:8px;}
+button.stop{background:#dc2626;}
+button.pause{background:#d97706;}
+.timer-display{text-align:center;font-size:48px;font-weight:bold;color:#7c3aed;padding:20px;}
+.label{color:#aaa;font-size:14px;margin-bottom:5px;}
+.alarm-list{margin-top:10px;}
+.alarm-item{background:#2d2d44;padding:10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.del{background:#dc2626;width:auto;padding:5px 10px;margin:0;border-radius:5px;}
+</style>
+</head>
+<body>
+<h1>⏰ All-in-One Alarm</h1>
+<div class="tabs">
+<button class="tab active" onclick="show('alarm')">⏰ Alarm</button>
+<button class="tab" onclick="show('sleep')">😴 Sleep</button>
+<button class="tab" onclick="show('meditation')">🧘 Meditation</button>
+<button class="tab" onclick="show('sports')">🏃 Sports</button>
+<button class="tab" onclick="show('music')">🎵 Music</button>
+<button class="tab" onclick="show('work')">💼 Work</button>
+</div>
+
+<div id="alarm" class="section active">
+<div class="card">
+<h2>⏰ Set Alarm</h2>
+<div class="label">Select Time:</div>
+<input type="time" id="alarmTime">
+<div class="label">Label:</div>
+<input type="text" id="alarmLabel" placeholder="e.g. Wake up" style="width:100%;padding:12px;background:#2d2d44;border:none;color:white;border-radius:10px;font-size:16px;margin-bottom:10px;">
+<button onclick="setAlarm()">+ Add Alarm</button>
+<div class="alarm-list" id="alarmList"></div>
+</div>
+</div>
+
+<div id="sleep" class="section">
+<div class="card">
+<h2>😴 Sleep Timer</h2>
+<div class="label">Minutes until sleep:</div>
+<input type="number" id="sleepMin" placeholder="e.g. 30" min="1">
+<button onclick="startTimer('sleep')">▶ Start Sleep Timer</button>
+<button class="stop" onclick="stopTimer('sleep')">■ Stop</button>
+<div class="timer-display" id="sleepDisplay">00:00</div>
+</div>
+</div>
+
+<div id="meditation" class="section">
+<div class="card">
+<h2>🧘 Meditation Timer</h2>
+<div class="label">Minutes:</div>
+<input type="number" id="medMin" placeholder="e.g. 10" min="1">
+<button onclick="startTimer('med')">▶ Start Meditation</button>
+<button class="stop" onclick="stopTimer('med')">■ Stop</button>
+<div class="timer-display" id="medDisplay">00:00</div>
+</div>
+</div>
+
+<div id="sports" class="section">
+<div class="card">
+<h2>🏃 Sports Timer</h2>
+<div class="label">Workout (minutes):</div>
+<input type="number" id="sportsMin" placeholder="e.g. 45" min="1">
+<button onclick="startTimer('sports')">▶ Start Workout</button>
+<button class="pause" onclick="pauseTimer('sports')">⏸ Pause</button>
+<button class="stop" onclick="stopTimer('sports')">■ Stop</button>
+<div class="timer-display" id="sportsDisplay">00:00</div>
+</div>
+</div>
+
+<div id="music" class="section">
+<div class="card">
+<h2>🎵 Music Timer</h2>
+<div class="label">Stop music after (minutes):</div>
+<input type="number" id="musicMin" placeholder="e.g. 60" min="1">
+<button onclick="startTimer('music')">▶ Start Music Timer</button>
+<button class="stop" onclick="stopTimer('music')">■ Stop</button>
+<div class="timer-display" id="musicDisplay">00:00</div>
+</div>
+</div>
+
+<div id="work" class="section">
+<div class="card">
+<h2>💼 Work Timer (Pomodoro)</h2>
+<div class="label">Work minutes:</div>
+<input type="number" id="workMin" value="25" min="1">
+<div class="label">Break minutes:</div>
+<input type="number" id="breakMin" value="5" min="1">
+<button onclick="startPomodoro()">▶ Start Pomodoro</button>
+<button class="stop" onclick="stopTimer('work')">■ Stop</button>
+<div class="timer-display" id="workDisplay">25:00</div>
+<div id="workStatus" style="text-align:center;color:#aaa;margin-top:10px;"></div>
+</div>
+</div>
+
+<script>
+var timers={};
+var alarms=[];
+var alarmInterval;
+
+function show(id){
+document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+event.target.classList.add('active');
+}
+
+function startTimer(type){
+var mins=0;
+if(type=='sleep') mins=document.getElementById('sleepMin').value;
+if(type=='med') mins=document.getElementById('medMin').value;
+if(type=='sports') mins=document.getElementById('sportsMin').value;
+if(type=='music') mins=document.getElementById('musicMin').value;
+if(!mins||mins<1){alert('Please enter minutes!');return;}
+if(timers[type]) clearInterval(timers[type]);
+var secs=mins*60;
+var display=type+'Display';
+if(type=='sleep') display='sleepDisplay';
+if(type=='med') display='medDisplay';
+timers[type]=setInterval(function(){
+secs--;
+var m=Math.floor(secs/60);
+var s=secs%60;
+document.getElementById(display).innerText=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+if(secs<=0){
+clearInterval(timers[type]);
+alert('⏰ '+type.charAt(0).toUpperCase()+type.slice(1)+' Timer Done!');
+}
+},1000);
+}
+
+function stopTimer(type){
+if(timers[type]) clearInterval(timers[type]);
+var displays={'sleep':'sleepDisplay','med':'medDisplay','sports':'sportsDisplay','music':'musicDisplay','work':'workDisplay'};
+if(displays[type]) document.getElementById(displays[type]).innerText='00:00';
+}
+
+function pauseTimer(type){
+if(timers[type]){clearInterval(timers[type]);timers[type]=null;}
+}
+
+function startPomodoro(){
+var work=document.getElementById('workMin').value||25;
+var brk=document.getElementById('breakMin').value||5;
+if(timers['work']) clearInterval(timers['work']);
+var secs=work*60;
+var isWork=true;
+document.getElementById('workStatus').innerText='💼 Work Time!';
+timers['work']=setInterval(function(){
+secs--;
+var m=Math.floor(secs/60);
+var s=secs%60;
+document.getElementById('workDisplay').innerText=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+if(secs<=0){
+if(isWork){
+alert('✅ Work done! Take a break!');
+secs=brk*60;
+isWork=false;
+document.getElementById('workStatus').innerText='☕ Break Time!';
+}else{
+alert('☕ Break over! Back to work!');
+secs=work*60;
+isWork=true;
+document.getElementById('workStatus').innerText='💼 Work Time!';
+}
+}
+},1000);
+}
+
+function setAlarm(){
+var time=document.getElementById('alarmTime').value;
+var label=document.getElementById('alarmLabel').value||'Alarm';
+if(!time){alert('Please select time!');return;}
+alarms.push({time:time,label:label});
+renderAlarms();
+if(!alarmInterval){
+alarmInterval=setInterval(checkAlarms,1000);
+}
+}
+
+function renderAlarms(){
+var list=document.getElementById('alarmList');
+list.innerHTML='';
+alarms.forEach(function(a,i){
+list.innerHTML+='<div class="alarm-item"><span>⏰ '+a.time+' - '+a.label+'</span><button class="del" onclick="deleteAlarm('+i+')">✕</button></div>';
+});
+}
+
+function deleteAlarm(i){
+alarms.splice(i,1);
+renderAlarms();
+}
+
+function checkAlarms(){
+var now=new Date();
+var h=now.getHours().toString().padStart(2,'0');
+var m=now.getMinutes().toString().padStart(2,'0');
+var current=h+':'+m;
+alarms.forEach(function(a){
+if(a.time===current&&now.getSeconds()===0){
+alert('🔔 ALARM! '+a.label);
+}
+});
+}
+</script>
+</body>
+</html>
